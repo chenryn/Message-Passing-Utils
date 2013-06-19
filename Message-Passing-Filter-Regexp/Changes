@@ -1,4 +1,9 @@
 Revision history for Perl extension Message::Passing::Filter::Regexp.
+
+0.04  Wed Jun 19 12:03:00 2013
+        - add `fromto` hashref attr, now you can capture multi-fields.
+        - modify JSON test for the hash randomization changed by Perl5.18
+
 0.03  Sat Jun  8 10:31:42 2013
         - add attrs of _re and _fields, so no more need to call function
           of Regexp::Log everytime. Save half time in 100k lines testing.

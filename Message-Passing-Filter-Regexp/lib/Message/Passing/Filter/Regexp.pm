@@ -12,7 +12,7 @@ use Message::Passing::Filter::Regexp::Log;
 with qw/ Message::Passing::Role::Filter /;
 use vars qw( $VERSION );
 
-$VERSION = 0.03;
+$VERSION = 0.04;
 
 has format => (
     is      => 'ro',
@@ -36,6 +36,12 @@ has mutate => (
     is      => 'ro',
     isa     => HashRef,
     default => sub { {} },
+);
+
+has fromto => (
+    is      => 'ro',
+    isa     => HashRef,
+    default => sub { { '@message' => '@fields' } },
 );
 
 has _regex => (
@@ -79,15 +85,19 @@ sub _build_fields {
 
 sub filter {
     my ( $self, $message ) = @_;
-    my $log_line = $message->{'@message'};
-    my %data;
-    my $re = $self->_re;
-    @data{ @{ $self->_fields } } = $log_line =~ /$re/;
-    for ( keys %{ $self->mutate } ) {
-        my $type = $self->mutate->{$_};
-        $data{$_} = eval "$type $data{$_}";
+
+    while ( my ( $from, $to ) = each %{ $self->fromto } ) {
+        my $log_line = $message->{$from};
+        my %data;
+        my $re = $self->_re;
+        @data{ @{ $self->_fields } } = $log_line =~ /$re/;
+        for ( keys %{ $self->mutate } ) {
+            my $type = $self->mutate->{$_};
+            $data{$_} = eval "$type $data{$_}";
+        }
+        $message->{$to} = {%data};
     }
-    $message->{'@fields'} = { %data };
+
     return $message;
 }
 
@@ -122,17 +132,17 @@ Message::Passing::Filter::Regexp - Regexp Capture Filter For Message::Passing
     # message-passing-cli
     use Message::Passing::DSL;
     run_message_server message_chain {
-        input file => (
-            class => 'FileTail',
-            output_to => 'decoder',
+        output stdout => (
+            class => 'STDOUT',
         );
-        decoder decoder => (
+        output elasticsearch => (
+            class => 'ElasticSearch',
+            elasticsearch_servers => ['127.0.0.1:9200'],
+        );
+        encoder("encoder",
             class => 'JSON',
-            output_to => 'logstash',
-        );
-        filter logstash => (
-            class => 'ToLogstash',
-            output_to => 'regexp',
+            output_to => 'stdout',
+            output_to => 'es',
         );
         filter regexp => (
             class => 'Regexp',
@@ -140,17 +150,17 @@ Message::Passing::Filter::Regexp - Regexp Capture Filter For Message::Passing
             capture => [qw( ts status remotehost url oh responsetime upstreamtime bytes )]
             output_to => 'encoder',
         );
-        encoder("encoder",
+        filter logstash => (
+            class => 'ToLogstash',
+            output_to => 'regexp',
+        );
+        decoder decoder => (
             class => 'JSON',
-            output_to => 'stdout',
-            output_to => 'es',
+            output_to => 'logstash',
         );
-        output stdout => (
-            class => 'STDOUT',
-        );
-        output elasticsearch => (
-            class => 'ElasticSearch',
-            elasticsearch_servers => ['127.0.0.1:9200'],
+        input file => (
+            class => 'FileTail',
+            output_to => 'decoder',
         );
     };
 
@@ -173,6 +183,10 @@ Name of a defined format in your regexfile.
 =head2 capture
 
 ArrayRef of regex names which you want to capture and has been defined in your regexfile. note delete the prefix C<%>.
+
+=head2 fromto
+
+HashRef of fields which you want capture from and to. Default as C<< { '@message' => '@fields' } >>.
 
 =head1 SEE ALSO
 
