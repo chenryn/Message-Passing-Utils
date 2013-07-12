@@ -12,7 +12,7 @@ use Message::Passing::Filter::Regexp::Log;
 with qw/ Message::Passing::Role::Filter /;
 use vars qw( $VERSION );
 
-$VERSION = 0.04;
+$VERSION = 0.05;
 
 has format => (
     is      => 'ro',
@@ -95,7 +95,13 @@ sub filter {
             my $type = $self->mutate->{$_};
             $data{$_} = eval "$type $data{$_}";
         }
-        $message->{$to} = {%data};
+        if ( defined $to ) {
+            $message->{$to} = {%data};
+        }
+        # put parsed fields directly in message hashref
+        else {
+            %$message = ( %$message, %data );
+        }
     }
 
     return $message;
@@ -188,6 +194,8 @@ ArrayRef of regex names which you want to capture and has been defined in your r
 
 HashRef of fields which you want capture from and to. Default as C<< { '@message' => '@fields' } >>.
 
+If you set C<< undef >> to one key, such field will exists directly in C<< %$message >>.
+
 =head1 SEE ALSO
 
 Idea steal from <http://logstash.net> Grok filter
@@ -197,6 +205,10 @@ Config Format see L<Config::Tiny>
 =head1 AUTHOR
 
 chenryn, E<lt>rao.chenlin@gmail.com<gt>
+
+=head1 CONTRIBUTOR
+
+Alexander Hartmaier
 
 =head1 COPYRIGHT AND LICENSE
 

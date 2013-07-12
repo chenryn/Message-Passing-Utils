@@ -1,5 +1,8 @@
 Revision history for Perl extension Message::Passing::Filter::Regexp.
 
+0.05  Fri Jul 12 18:03:14 2013
+        - add support for `fromto => { message => undef }`.
+
 0.04  Wed Jun 19 12:03:00 2013
         - add `fromto` hashref attr, now you can capture multi-fields.
         - modify JSON test for the hash randomization changed by Perl5.18
